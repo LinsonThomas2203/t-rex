@@ -1,16 +1,36 @@
 import json
-from transformers import pipeline
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
 
-def load_sentences(input_file):
+def load_texts(input_file):
     with open(input_file, 'r') as file:
         data = json.load(file)
-    return data['sentence1'], data['sentence2'], data['sentence3']
+    return data['text_kerala'], data['text_rajasthan'], data['text_assam']
 
-def summarize_sentences(sentence1, sentence2, sentence3):
-    combined_text = f"{sentence1} {sentence2} {sentence3}"
-    summarizer = pipeline("summarization")
-    summary = summarizer(combined_text, max_length=50, min_length=25, do_sample=False)
-    return summary[0]['summary_text']
+def summarize_texts(text_kerala, text_rajasthan, text_assam):
+    combined_text = f"{text_kerala} {text_rajasthan} {text_assam}"
+    
+    # Initialize a tokenizer and stemmer
+    tokenizer = Tokenizer("english")
+    stemmer = Stemmer("english")
+    
+    # Parse the combined text
+    parser = PlaintextParser.from_string(combined_text, tokenizer)
+    
+    # Initialize the LSA summarizer
+    summarizer = LsaSummarizer(stemmer)
+    summarizer.stop_words = get_stop_words("english")
+    
+    # Generate the summary
+    summary = summarizer(parser.document, sentences_count=7)  # Adjust sentences_count as needed
+    
+    # Combine the summarized sentences into a single string
+    summary_text = " ".join([str(sentence) for sentence in summary])
+    
+    return summary_text
 
 def save_summary(output_file, summary_text):
     with open(output_file, 'w') as file:
@@ -20,6 +40,6 @@ if __name__ == "__main__":
     input_file = 'input.json'
     output_file = 'output.json'
 
-    sentence1, sentence2, sentence3 = load_sentences(input_file)
-    summary_text = summarize_sentences(sentence1, sentence2, sentence3)
+    text_kerala, text_rajasthan, text_assam = load_texts(input_file)
+    summary_text = summarize_texts(text_kerala, text_rajasthan, text_assam)
     save_summary(output_file, summary_text)
